@@ -49,7 +49,7 @@ Legende: ✅ umgesetzt (ungetestet auf Gerät) · ⚠️ teilweise · ❌ **nich
 | Navigation Heute · Notizen · Kalender · Fokus · Mehr | ✅ | |
 | Konfigurierbare Schnellaktion (schwebender Knopf) | ✅ | Notiz, Einsprechen, Aufgabe, Termin, Kopf ausschütten; sichtbar auf den fünf Hauptseiten und der Aufgabenübersicht |
 | Startseite „Mein Kopf heute“ mit anpassbaren Karten (Reihenfolge, ausblenden, kompakt) | ✅ | Schnellaktionen, Stimmung, nächster Termin, drei wichtigste Aufgaben, aktive Erinnerungen, Gedanke festhalten, Fokus-Timer, Schnellzugriffe |
-| Notizen: schnell, Spracheingabe, Checklisten, Anhänge (Bild/Datei), Farben, Kategorien, anheften, Suche, Archiv, Papierkorb mit Wiederherstellung | ✅ | Spracheingabe seit Version 0.1.1 direkt in der App (Diktier-Fenster, siehe unten) |
+| Notizen: schnell, Spracheingabe, Checklisten, Anhänge (Bild/Datei), Farben, Kategorien, anheften, Suche, Archiv, Papierkorb mit Wiederherstellung | ✅ | Spracheingabe direkt in der App (Diktier-Fenster, siehe unten) |
 | Notiz → Aufgabe / Termin / Erinnerung / Tagebucheintrag | ✅ | |
 | Gedanken-Parkplatz | ✅ | eigener Reiter in „Notizen“, auch als Widget |
 | Notizen sperren (PIN/Biometrie) | ⚠️ | **Nur als App-Sperre für die ganze App**, nicht pro Notiz |
