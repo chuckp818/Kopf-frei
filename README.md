@@ -49,7 +49,7 @@ Legende: ✅ umgesetzt (ungetestet auf Gerät) · ⚠️ teilweise · ❌ **nich
 | Navigation Heute · Notizen · Kalender · Fokus · Mehr | ✅ | |
 | Konfigurierbare Schnellaktion (schwebender Knopf) | ✅ | Notiz, Einsprechen, Aufgabe, Termin, Kopf ausschütten; sichtbar auf den fünf Hauptseiten und der Aufgabenübersicht |
 | Startseite „Mein Kopf heute“ mit anpassbaren Karten (Reihenfolge, ausblenden, kompakt) | ✅ | Schnellaktionen, Stimmung, nächster Termin, drei wichtigste Aufgaben, aktive Erinnerungen, Gedanke festhalten, Fokus-Timer, Schnellzugriffe |
-| Notizen: schnell, Spracheingabe, Checklisten, Anhänge (Bild/Datei), Farben, Kategorien, anheften, Suche, Archiv, Papierkorb mit Wiederherstellung | ✅ | Spracheingabe über die Spracherkennung des Systems |
+| Notizen: schnell, Spracheingabe, Checklisten, Anhänge (Bild/Datei), Farben, Kategorien, anheften, Suche, Archiv, Papierkorb mit Wiederherstellung | ✅ | Spracheingabe seit Version 0.1.1 direkt in der App (Diktier-Fenster, siehe unten) |
 | Notiz → Aufgabe / Termin / Erinnerung / Tagebucheintrag | ✅ | |
 | Gedanken-Parkplatz | ✅ | eigener Reiter in „Notizen“, auch als Widget |
 | Notizen sperren (PIN/Biometrie) | ⚠️ | **Nur als App-Sperre für die ganze App**, nicht pro Notiz |
@@ -63,6 +63,8 @@ Legende: ✅ umgesetzt (ungetestet auf Gerät) · ⚠️ teilweise · ❌ **nich
 | 8 Widgets (Schnellnotiz, Spracheingabe, Heutige Termine, Aufgabenliste, Angeheftete Notiz, Fokus-Timer, Tagesübersicht, Gedanken-Parkplatz; Größen 2×1, 2×2, 4×2, 4×4) | ⚠️ | Widgets sind statisch: **kein** live laufender Countdown; sie aktualisieren sich bei Datenänderungen und etwa alle 30 Minuten. Farben: dunkle Palette, außer im Hell-Modus |
 | Fokus-Timer | ⚠️ | Timer mit Ende-Erinnerung; ❌ keine Fokus-Übungen, ❌ keine Atemhilfen (Phase 2) |
 | „Ich bin überfordert“ (SOS) | ⚠️ | **Nur Basis:** beruhigender Text, Kopf ausschütten, 5-Minuten-Start, eine Aufgabe wählen, Stimmung festhalten. Geführte Übungen = Phase 2 |
+| Diktieren in der App (Mikrofon-Berechtigung, Live-Text, Neustart nach Pausen, Systemdialog als Rückfall) | ⚠️ | Baut, aber **auf keinem Gerät getestet**. Die Erkennung selbst macht der Spracherkennungsdienst des Geräts (meist Google); ob offline oder online, hängt vom Sprachpaket ab |
+| Termine aus Text/Sprache erkennen, Liste zur Bestätigung, Eintrag in den Kalender (+ Erinnerung 30 Min. vorher) | ⚠️ | Erkennung ist **regelbasiert und lokal (keine KI)**; 26 Logik-Tests + 5 Abbildungs-Tests bestanden, Oberfläche ungetestet. Erkennt gängige deutsche Formulierungen („morgen um 10 Uhr Zahnarzt“, „am Montag um halb vier“), nicht beliebige Sprache. Nichts wird ohne Bestätigung eingetragen |
 | Kopf ausschütten | ✅ | Freitext/Sprache, laufend als Entwurf gesichert; in Gedanken, Aufgaben oder eine Notiz umwandeln |
 | Einstellungen | ✅ | Darstellung, Startseite, Erinnerungen/Berechtigungen, App-Sperre, Export, „Alle Daten löschen“ |
 | Lokale Datenbank (Room, UUIDs, Zeitstempel, Schema-Export, Migrationsrahmen) | ✅ | Version 1; ❌ noch keine Migration nötig und daher kein Migrationstest |
