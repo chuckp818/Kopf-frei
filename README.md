@@ -12,15 +12,18 @@ mehrere Gradle-Module · Offline-first.
 
 ## 1. Ehrlicher Prüfstatus (bitte zuerst lesen)
 
-**Die Android-Module wurden in der Entstehungsumgebung NICHT kompiliert.** Dort gab es weder ein
-Android-SDK noch Zugriff auf Gradle/Google-Maven. Es wurde also **kein einziger `./gradlew`-Lauf**
-durchgeführt und **keine APK gebaut**. Rechne beim ersten Build mit kleinen Compilerfehlern
-(z. B. ein Icon-Name, eine Funktionssignatur) – siehe Abschnitt 8 „Fehlerbehebung“.
+**Stand nach dem ersten erfolgreichen CI-Lauf (GitHub Actions, Lauf 44728590366):** Die Android-Module
+wurden in der Entstehungsumgebung selbst nicht kompiliert (kein Android-SDK dort), sondern erst in
+GitHub Actions. Der erste Lauf scheiterte an 3 Compilerfehlern (Broadcast-Receiver mit
+`@AndroidEntryPoint`, behoben durch einen Hilt-EntryPoint). Danach liefen **`:app:assembleDebug` und
+`testDebugUnitTest` erfolgreich durch**, und die Debug-APK wurde als Artifact bereitgestellt.
+**Auf einem Gerät oder Emulator wurde die App weiterhin nicht ausgeführt.**
 
 | Was | Ergebnis |
 |---|---|
-| Kompilierung der Android-Module (`app`, `core:database/designsystem/security/reminders`, alle `feature:*`) | **nicht durchgeführt** |
-| APK-Build | **nicht durchgeführt** |
+| Kompilierung der Android-Module (`app`, `core:database/designsystem/security/reminders`, alle `feature:*`) | **in GitHub Actions erfolgreich** (nach Behebung von 3 Fehlern) |
+| APK-Build (Debug) | **in GitHub Actions erfolgreich** (Artifact `KopfFrei-debug-apk`, ca. 20 MB) |
+| Gradle-Unit-Tests (`:core:common:test`, `testDebugUnitTest` aller Module) | **in GitHub Actions erfolgreich** (Berichte als Artifact `unit-test-reports`) |
 | Reine Kotlin-Logik (`core:common`, ohne Android) | mit `kotlinc` 2.2.20 kompiliert; **89 Tests** über einen selbstgebauten Mini-JUnit-Ersatz ausgeführt: 89 bestanden, 0 fehlgeschlagen |
 | Routen & Deep-Link-Muster (`app/…/navigation/Routes.kt`) | kompiliert und **9 Tests** ausgeführt (Ersatz-Runner): 9 bestanden |
 | Terminserien-Berechnung (`EventExpander` in `core:database`) | kompiliert (mit Attrappen für die Room-Annotationen) und **12 Tests** ausgeführt (Ersatz-Runner): 12 bestanden |
@@ -141,7 +144,7 @@ offiziellen Angabe von gradle.org überein). `minSdk` 26 (Android 8.0), `compile
    *Artifacts* **KopfFrei-debug-apk** herunterladen (die ZIP enthält die `.apk`).
 3. Für ein Release: Tag `v0.1.0` setzen und pushen (`git tag v0.1.0 && git push origin v0.1.0`) – die APK
    hängt dann automatisch an einem GitHub-Release.
-   *Hinweis:* Der Workflow ist **ungetestet** (nicht ausgeführt).
+   *Hinweis:* Der Workflow wurde ausgeführt: Tests und Debug-APK liefen erfolgreich durch. Der Release-Job (Tag `v*`) wurde noch nicht ausgeführt.
 
 **Release-Signatur:** Der Release-Build ist minifiziert, aber **nicht signiert** – eine unsignierte
 Release-APK lässt sich nicht installieren. Für den Play Store bzw. eine eigene Release-APK braucht es
