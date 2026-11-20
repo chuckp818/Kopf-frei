@@ -25,6 +25,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -34,11 +36,14 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import de.kopffrei.core.ai.AppointmentRecognizer
+import de.kopffrei.core.ai.Recognition
 import de.kopffrei.core.common.calendar.AppointmentDetector
 import de.kopffrei.core.common.calendar.DetectedAppointment
 import de.kopffrei.core.common.text.BrainDump
 import de.kopffrei.core.database.entity.NoteEntity
 import de.kopffrei.core.database.entity.TaskEntity
+import de.kopffrei.core.database.prefs.SettingsRepository
 import de.kopffrei.core.database.repository.DraftRepository
 import de.kopffrei.core.database.repository.NoteRepository
 import de.kopffrei.core.database.repository.TaskRepository
@@ -56,7 +61,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -84,7 +92,15 @@ class BrainDumpViewModel @Inject constructor(
     private val notes: NoteRepository,
     private val tasks: TaskRepository,
     private val appointmentImporter: AppointmentImporter,
+    private val appointmentRecognizer: AppointmentRecognizer,
+    settingsRepository: SettingsRepository,
 ) : ViewModel() {
+
+    /** KI-Erkennung eingeschaltet (Einstellungen)? Dann wird nur auf ausdrücklichen Tipp erkannt. */
+    val aiEnabled: StateFlow<Boolean> = settingsRepository.settings
+        .map { it.aiAppointments }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
 
     private val _state = MutableStateFlow(BrainDumpState())
     val state: StateFlow<BrainDumpState> = _state.asStateFlow()
@@ -134,6 +150,11 @@ class BrainDumpViewModel @Inject constructor(
 
     fun consumeMessage() {
         _state.update { it.copy(message = null) }
+    }
+
+    fun recognizeAppointments(onDone: (Recognition) -> Unit) {
+        val text = _state.value.text
+        viewModelScope.launch { onDone(appointmentRecognizer.recognize(text)) }
     }
 
     /** Trägt bestätigte, erkannte Termine in den Kalender ein. Der Text bleibt unverändert erhalten. */
@@ -250,10 +271,14 @@ fun BrainDumpScreen(
     val snackbar = remember { SnackbarHostState() }
     val startVoice = rememberVoiceInput { viewModel.appendText(it) }
     val lineCount = BrainDump.splitLines(state.text).size
-    var reviewOpen by remember { mutableStateOf(false) }
-    // Die Erkennung läuft lokal; kurz warten und im Hintergrund rechnen, damit das Tippen flüssig bleibt.
-    val detected by produceState(initialValue = emptyList<DetectedAppointment>(), state.text) {
-        if (state.text.isBlank()) {
+    val aiEnabled by viewModel.aiEnabled.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    var reviewItems by remember { mutableStateOf<List<DetectedAppointment>?>(null) }
+    var recognizing by remember { mutableStateOf(false) }
+    // Lokale Erkennung: kurz warten und im Hintergrund rechnen, damit das Tippen flüssig bleibt.
+    // Mit KI wird nur auf ausdrücklichen Tipp erkannt (dann verlässt der Text das Gerät).
+    val detected by produceState(initialValue = emptyList<DetectedAppointment>(), state.text, aiEnabled) {
+        if (aiEnabled || state.text.isBlank()) {
             value = emptyList()
         } else {
             delay(400)
@@ -312,10 +337,32 @@ fun BrainDumpScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            if (detected.isNotEmpty()) {
+            if (aiEnabled) {
+                if (state.text.isNotBlank()) {
+                    KfButton(
+                        if (recognizing) "Ich erkenne Termine …" else "Termine mit KI erkennen",
+                        onClick = {
+                            recognizing = true
+                            viewModel.recognizeAppointments { result ->
+                                recognizing = false
+                                result.note?.let { Toast.makeText(context, it, Toast.LENGTH_LONG).show() }
+                                if (result.items.isEmpty()) {
+                                    Toast.makeText(context, "Ich habe keine Termine gefunden.", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    reviewItems = result.items
+                                }
+                            }
+                        },
+                        enabled = !recognizing,
+                        icon = Icons.Rounded.CalendarToday,
+                        style = KfButtonStyle.Tonal,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            } else if (detected.isNotEmpty()) {
                 KfButton(
                     if (detected.size == 1) "1 Termin erkannt – eintragen?" else "${detected.size} Termine erkannt – eintragen?",
-                    onClick = { reviewOpen = true },
+                    onClick = { reviewItems = detected },
                     icon = Icons.Rounded.CalendarToday,
                     style = KfButtonStyle.Tonal,
                     modifier = Modifier.fillMaxWidth(),
@@ -359,14 +406,14 @@ fun BrainDumpScreen(
         }
     }
 
-    if (reviewOpen) {
+    reviewItems?.let { items ->
         AppointmentReviewDialog(
-            items = detected,
+            items = items,
             onConfirm = { chosen ->
-                reviewOpen = false
+                reviewItems = null
                 viewModel.importAppointments(chosen)
             },
-            onDismiss = { reviewOpen = false },
+            onDismiss = { reviewItems = null },
         )
     }
 }

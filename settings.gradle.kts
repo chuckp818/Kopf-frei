@@ -29,6 +29,7 @@ include(":core:database")
 include(":core:designsystem")
 include(":core:security")
 include(":core:reminders")
+include(":core:ai")
 
 include(":feature:dashboard")
 include(":feature:notes")

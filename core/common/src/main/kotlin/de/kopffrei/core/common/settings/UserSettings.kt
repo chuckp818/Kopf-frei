@@ -22,6 +22,11 @@ data class UserSettings(
     val quickAction: QuickAction = QuickAction.NOTE,
     /** Schlüssel der „Mehr“-Einträge, die auf der Startseite als Schnellzugriff erscheinen. */
     val pinnedShortcuts: Set<String> = emptySet(),
+    /**
+     * Termine mit der Claude-API (online, eigener API-Schlüssel) erkennen. Standard: aus. Nur wenn an, verlässt
+     * Text auf ausdrücklichen Tipp hin das Gerät.
+     */
+    val aiAppointments: Boolean = false,
 ) {
     /** Sichtbare Startseiten-Karten in der gewählten Reihenfolge (fehlende Karten werden angehängt). */
     fun visibleDashboardCards(): List<DashboardCard> {

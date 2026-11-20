@@ -156,7 +156,7 @@ TEST_PREFIX = [
     ("kotlinx.coroutines.test", {"kotlinx.coroutines.test"}),
     ("androidx.room", {"room.testing", "room.runtime"}),
 ]
-PLATFORM = ("android.", "java.", "javax.", "kotlin.", "kotlinx.", "org.w3c", "org.xmlpull")
+PLATFORM = ("android.", "java.", "javax.", "kotlin.", "kotlinx.", "org.w3c", "org.xmlpull", "org.json")
 
 for f in kt_files:
     mod = module_of(f)

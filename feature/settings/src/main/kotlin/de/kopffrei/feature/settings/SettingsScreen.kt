@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -44,6 +45,7 @@ import de.kopffrei.core.designsystem.components.KfChip
 import de.kopffrei.core.designsystem.components.KfDropdownField
 import de.kopffrei.core.designsystem.components.KfScreen
 import de.kopffrei.core.designsystem.components.KfSwitchRow
+import de.kopffrei.core.designsystem.components.KfTextField
 import de.kopffrei.core.designsystem.components.SectionTitle
 import de.kopffrei.core.reminders.ReminderPermissions
 import de.kopffrei.core.security.BiometricAuth
@@ -61,6 +63,7 @@ fun SettingsScreen(
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
+    val hasAiKey by viewModel.hasAiKey.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
 
@@ -69,6 +72,8 @@ fun SettingsScreen(
     var batteryIgnored by remember { mutableStateOf(ReminderPermissions.ignoresBatteryOptimizations(context)) }
     var confirmExport by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var confirmAi by remember { mutableStateOf(false) }
+    var aiKeyDraft by remember { mutableStateOf("") }
     var fontDraft by remember(settings.fontScale) { mutableFloatStateOf(settings.fontScale) }
 
     // Status nach der Rückkehr aus den Systemeinstellungen neu lesen.
@@ -285,10 +290,67 @@ fun SettingsScreen(
                         },
                     )
                     Text(
-                        "Alles bleibt auf diesem Gerät: keine Registrierung, kein Internet, keine Werbung, keine " +
-                            "Auswertung. Die Sperre schützt die Oberfläche der App; die Datenbank selbst ist " +
-                            "nicht verschlüsselt.",
+                        "Alles bleibt auf diesem Gerät: keine Registrierung, keine Werbung, keine Auswertung. " +
+                            "Die App nutzt das Internet nur, wenn du unten die optionale KI-Erkennung einschaltest. " +
+                            "Die Sperre schützt die Oberfläche der App; die Datenbank selbst ist nicht verschlüsselt.",
                         style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            // ---------------------------------------------------------- KI (optional)
+            item(key = "ai") {
+                KfCard {
+                    SectionTitle("KI-Erkennung (optional)")
+                    KfSwitchRow(
+                        label = "Termine mit KI erkennen",
+                        checked = settings.aiAppointments,
+                        onCheckedChange = { enable ->
+                            if (enable) confirmAi = true else viewModel.update { it.copy(aiAppointments = false) }
+                        },
+                        description = "Aus: alles bleibt auf deinem Gerät (lokale Erkennung). An: Wenn du in „Heute“ " +
+                            "oder „Kopf ausschütten“ ausdrücklich auf „Termine mit KI erkennen“ tippst, wird dieser " +
+                            "Text an die Claude-API von Anthropic gesendet.",
+                    )
+                    if (settings.aiAppointments) {
+                        Text(
+                            if (hasAiKey) "API-Schlüssel ist gespeichert (verschlüsselt auf diesem Gerät)."
+                            else "Es ist noch kein API-Schlüssel gespeichert. Ohne Schlüssel nutze ich die lokale Erkennung.",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        KfTextField(
+                            value = aiKeyDraft,
+                            onValueChange = { aiKeyDraft = it },
+                            label = "API-Schlüssel",
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                        )
+                        KfButton(
+                            "Schlüssel speichern",
+                            onClick = {
+                                viewModel.saveAiKey(aiKeyDraft)
+                                aiKeyDraft = ""
+                            },
+                            enabled = aiKeyDraft.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        if (hasAiKey) {
+                            KfButton(
+                                "Schlüssel löschen",
+                                onClick = viewModel::clearAiKey,
+                                style = KfButtonStyle.Outlined,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                    Text(
+                        "Du brauchst einen eigenen API-Schlüssel von console.anthropic.com. Die Nutzung ist " +
+                            "kostenpflichtig und unabhängig von einem Claude-Abo. Der Schlüssel liegt verschlüsselt " +
+                            "nur auf diesem Gerät, wird nicht gesichert und nicht exportiert. Bei Fehlern oder ohne " +
+                            "Verbindung nutze ich automatisch die lokale Erkennung. Du siehst jeden Vorschlag, bevor " +
+                            "etwas im Kalender landet.",
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -340,6 +402,21 @@ fun SettingsScreen(
                 exportLauncher.launch("kopffrei-backup.json")
             },
             onDismiss = { confirmExport = false },
+        )
+    }
+    if (confirmAi) {
+        ConfirmDialog(
+            title = "KI-Erkennung einschalten?",
+            message = "Wenn du in „Heute“ oder „Kopf ausschütten“ auf „Termine mit KI erkennen“ tippst, wird der " +
+                "Text aus dem Eingabefeld über das Internet an die Claude-API von Anthropic gesendet und dort " +
+                "ausgewertet. Er enthält möglicherweise persönliche Dinge. Ohne dein Tippen wird nichts gesendet. " +
+                "Du kannst das jederzeit wieder ausschalten.",
+            confirmText = "Einschalten",
+            onConfirm = {
+                confirmAi = false
+                viewModel.update { it.copy(aiAppointments = true) }
+            },
+            onDismiss = { confirmAi = false },
         )
     }
     if (confirmDelete) {

@@ -63,6 +63,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -92,6 +93,7 @@ fun KfTextField(
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     placeholder: String? = null,
     trailingIcon: (@Composable () -> Unit)? = null,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
 ) {
     OutlinedTextField(
         value = value,
@@ -100,6 +102,7 @@ fun KfTextField(
         label = { Text(label) },
         placeholder = if (placeholder != null) ({ Text(placeholder) }) else null,
         trailingIcon = trailingIcon,
+        visualTransformation = visualTransformation,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
         singleLine = singleLine,

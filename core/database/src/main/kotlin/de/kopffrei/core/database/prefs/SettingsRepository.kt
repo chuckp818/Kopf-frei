@@ -63,6 +63,7 @@ class SettingsRepository @Inject constructor(
         val SHOW_MOTIVATION = booleanPreferencesKey("show_motivation")
         val QUICK_ACTION = stringPreferencesKey("quick_action")
         val PINNED_SHORTCUTS = stringSetPreferencesKey("pinned_shortcuts")
+        val AI_APPOINTMENTS = booleanPreferencesKey("ai_appointments")
     }
 
     private inline fun <reified T : Enum<T>> String?.toEnum(default: T): T =
@@ -92,6 +93,7 @@ class SettingsRepository @Inject constructor(
             showMotivation = this[Keys.SHOW_MOTIVATION] ?: defaults.showMotivation,
             quickAction = this[Keys.QUICK_ACTION].toEnum(defaults.quickAction),
             pinnedShortcuts = this[Keys.PINNED_SHORTCUTS].orEmpty(),
+            aiAppointments = this[Keys.AI_APPOINTMENTS] ?: defaults.aiAppointments,
         )
     }
 
@@ -109,5 +111,6 @@ class SettingsRepository @Inject constructor(
         prefs[Keys.SHOW_MOTIVATION] = showMotivation
         prefs[Keys.QUICK_ACTION] = quickAction.name
         prefs[Keys.PINNED_SHORTCUTS] = pinnedShortcuts
+        prefs[Keys.AI_APPOINTMENTS] = aiAppointments
     }
 }

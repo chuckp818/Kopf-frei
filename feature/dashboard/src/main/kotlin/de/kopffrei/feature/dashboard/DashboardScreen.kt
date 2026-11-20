@@ -3,6 +3,7 @@ package de.kopffrei.feature.dashboard
 import android.widget.Toast
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.ui.platform.LocalContext
+import de.kopffrei.core.ai.Recognition
 import de.kopffrei.core.common.calendar.AppointmentDetector
 import de.kopffrei.core.common.calendar.DetectedAppointment
 import java.time.LocalDateTime
@@ -134,7 +135,13 @@ fun DashboardScreen(
                             compact, state.reminders, onOpenDeepLink,
                             viewModel::acknowledge, viewModel::snooze, viewModel::completeFromReminder,
                         )
-                        DashboardCard.QUICK_THOUGHT -> QuickThoughtCard(compact, viewModel::saveThought, viewModel::importAppointments)
+                        DashboardCard.QUICK_THOUGHT -> QuickThoughtCard(
+                            compact = compact,
+                            aiEnabled = settings.aiAppointments,
+                            onSave = viewModel::saveThought,
+                            onImportAppointments = viewModel::importAppointments,
+                            onRecognize = viewModel::recognizeAppointments,
+                        )
                         DashboardCard.FOCUS -> FocusCard(compact, onStartFocus)
                         DashboardCard.SHORTCUTS -> ShortcutsCard(compact, settings.pinnedShortcuts, onOpenMore)
                     }
@@ -360,16 +367,19 @@ private fun RemindersCard(
 @Composable
 private fun QuickThoughtCard(
     compact: Boolean,
+    aiEnabled: Boolean,
     onSave: (String) -> Unit,
     onImportAppointments: (List<DetectedAppointment>, (Result<Int>) -> Unit) -> Unit,
+    onRecognize: (String, (Recognition) -> Unit) -> Unit,
 ) {
     val context = LocalContext.current
     var text by rememberSaveable { mutableStateOf("") }
-    var reviewOpen by remember { mutableStateOf(false) }
+    var reviewItems by remember { mutableStateOf<List<DetectedAppointment>?>(null) }
+    var recognizing by remember { mutableStateOf(false) }
     val startVoice = rememberVoiceInput { spoken -> text = (text + " " + spoken).trim() }
-    // Erkennung läuft lokal und ist billig; sie aktualisiert sich bei jeder Textänderung.
-    val detected = remember(text) {
-        if (text.isBlank()) emptyList() else AppointmentDetector.detect(text, LocalDateTime.now())
+    // Lokale Erkennung läuft billig bei jeder Textänderung. Die KI wird nur auf ausdrücklichen Tipp befragt.
+    val detected = remember(text, aiEnabled) {
+        if (aiEnabled || text.isBlank()) emptyList() else AppointmentDetector.detect(text, LocalDateTime.now())
     }
     KfCard(contentPadding = cardPadding(compact)) {
         SectionTitle("Gedanke festhalten")
@@ -382,10 +392,31 @@ private fun QuickThoughtCard(
                 IconButton(onClick = startVoice) { Icon(Icons.Rounded.Mic, contentDescription = "Einsprechen") }
             },
         )
-        if (detected.isNotEmpty()) {
+        if (aiEnabled) {
+            if (text.isNotBlank()) {
+                KfButton(
+                    if (recognizing) "Ich erkenne Termine …" else "Termine mit KI erkennen",
+                    onClick = {
+                        recognizing = true
+                        onRecognize(text) { result ->
+                            recognizing = false
+                            result.note?.let { Toast.makeText(context, it, Toast.LENGTH_LONG).show() }
+                            if (result.items.isEmpty()) {
+                                Toast.makeText(context, "Ich habe keine Termine gefunden.", Toast.LENGTH_SHORT).show()
+                            } else {
+                                reviewItems = result.items
+                            }
+                        }
+                    },
+                    enabled = !recognizing,
+                    icon = Icons.Rounded.CalendarToday,
+                    style = KfButtonStyle.Tonal,
+                )
+            }
+        } else if (detected.isNotEmpty()) {
             KfButton(
                 if (detected.size == 1) "1 Termin erkannt – eintragen?" else "${detected.size} Termine erkannt – eintragen?",
-                onClick = { reviewOpen = true },
+                onClick = { reviewItems = detected },
                 icon = Icons.Rounded.CalendarToday,
                 style = KfButtonStyle.Tonal,
             )
@@ -400,11 +431,11 @@ private fun QuickThoughtCard(
             icon = Icons.Rounded.Check,
         )
     }
-    if (reviewOpen) {
+    reviewItems?.let { items ->
         AppointmentReviewDialog(
-            items = detected,
+            items = items,
             onConfirm = { chosen ->
-                reviewOpen = false
+                reviewItems = null
                 onImportAppointments(chosen) { result ->
                     val message = result.fold(
                         onSuccess = { n -> if (n == 1) "1 Termin im Kalender eingetragen." else "$n Termine im Kalender eingetragen." },
@@ -413,7 +444,7 @@ private fun QuickThoughtCard(
                     Toast.makeText(context, message, Toast.LENGTH_LONG).show()
                 }
             },
-            onDismiss = { reviewOpen = false },
+            onDismiss = { reviewItems = null },
         )
     }
 }

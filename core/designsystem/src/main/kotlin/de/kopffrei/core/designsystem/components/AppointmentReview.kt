@@ -77,6 +77,7 @@ fun AppointmentReviewDialog(
                                 if (item.dateGuessed) add("Datum geschätzt")
                                 if (item.timeGuessed) add("Uhrzeit geschätzt")
                                 if (item.weekly) add("wöchentlich")
+                                if (item.byAi) add("von der KI erkannt, bitte prüfen")
                             }
                             if (hints.isNotEmpty()) {
                                 Text(

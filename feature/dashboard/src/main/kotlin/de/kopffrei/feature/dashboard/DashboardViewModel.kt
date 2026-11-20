@@ -3,6 +3,8 @@ package de.kopffrei.feature.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import de.kopffrei.core.ai.AppointmentRecognizer
+import de.kopffrei.core.ai.Recognition
 import de.kopffrei.core.common.calendar.DetectedAppointment
 import de.kopffrei.core.common.model.Mood
 import de.kopffrei.core.common.model.OwnerType
@@ -49,6 +51,7 @@ class DashboardViewModel @Inject constructor(
     private val moodRepository: MoodRepository,
     private val reminders: ReminderCoordinator,
     private val appointmentImporter: AppointmentImporter,
+    private val appointmentRecognizer: AppointmentRecognizer,
 ) : ViewModel() {
 
     /** Aktualisiert „nächster Termin“ und „überfällig“ im Minutentakt. */
@@ -106,6 +109,11 @@ class DashboardViewModel @Inject constructor(
     fun saveThought(text: String) {
         if (text.isBlank()) return
         viewModelScope.launch { noteRepository.addThought(text) }
+    }
+
+    /** Erkennt Termine im Text: mit KI, wenn der Nutzer sie eingeschaltet hat, sonst lokal. */
+    fun recognizeAppointments(text: String, onDone: (Recognition) -> Unit) {
+        viewModelScope.launch { onDone(appointmentRecognizer.recognize(text)) }
     }
 
     /** Trägt vom Nutzer bestätigte, erkannte Termine in den Kalender ein; [onDone] meldet Anzahl oder Fehler. */

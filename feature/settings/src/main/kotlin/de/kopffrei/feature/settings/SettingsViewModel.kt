@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import de.kopffrei.core.ai.AiKeyStore
 import de.kopffrei.core.common.WidgetUpdater
 import de.kopffrei.core.common.settings.UserSettings
 import de.kopffrei.core.database.DataManagement
@@ -33,10 +34,16 @@ class SettingsViewModel @Inject constructor(
     private val reminders: ReminderCoordinator,
     private val notifications: NotificationHelper,
     private val widgets: WidgetUpdater,
+    private val aiKeyStore: AiKeyStore,
 ) : ViewModel() {
 
     val settings: StateFlow<UserSettings> = repository.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UserSettings())
+
+    private val _hasAiKey = MutableStateFlow(aiKeyStore.hasKey())
+
+    /** Ob ein API-Schlüssel für die optionale KI-Erkennung gespeichert ist (der Schlüssel selbst wird nie angezeigt). */
+    val hasAiKey: StateFlow<Boolean> = _hasAiKey.asStateFlow()
 
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
@@ -47,6 +54,18 @@ class SettingsViewModel @Inject constructor(
             repository.update(transform)
             widgets.requestUpdate()
         }
+    }
+
+    fun saveAiKey(key: String) {
+        val saved = aiKeyStore.save(key)
+        _hasAiKey.value = aiKeyStore.hasKey()
+        _message.value = if (saved) "API-Schlüssel gespeichert." else "Das sieht nicht wie ein gültiger API-Schlüssel aus."
+    }
+
+    fun clearAiKey() {
+        aiKeyStore.clear()
+        _hasAiKey.value = false
+        _message.value = "API-Schlüssel gelöscht."
     }
 
     fun showMessage(text: String) {
@@ -90,6 +109,8 @@ class SettingsViewModel @Inject constructor(
                 reminders.cancelAll()
                 dataManagement.deleteEverything()
                 repository.reset()
+                aiKeyStore.clear()
+                _hasAiKey.value = false
                 context.deleteSharedPreferences(FOCUS_PREFS)
                 widgets.requestUpdate()
                 _message.value = "Alle Daten wurden gelöscht."

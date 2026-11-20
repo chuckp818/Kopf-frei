@@ -16,6 +16,7 @@ import java.util.regex.Pattern
  * @property dateGuessed Das Datum wurde nicht genannt, sondern aus der Uhrzeit abgeleitet (heute/morgen).
  * @property timeGuessed Nur eine Tageszeit wurde genannt ("morgen früh"); die Uhrzeit ist ein Richtwert.
  * @property weekly "jeden Montag …": Der Termin wiederholt sich wöchentlich.
+ * @property byAi Der Vorschlag stammt von der (optionalen, online arbeitenden) KI statt von der lokalen Erkennung.
  */
 data class DetectedAppointment(
     val title: String,
@@ -26,6 +27,7 @@ data class DetectedAppointment(
     val dateGuessed: Boolean = false,
     val timeGuessed: Boolean = false,
     val weekly: Boolean = false,
+    val byAi: Boolean = false,
 ) {
     val allDay: Boolean get() = startMinutes == null
 

@@ -2,7 +2,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!--
-        Die App selbst braucht kein Internet. Das Mikrofon wird nur für das Diktieren benutzt und nur, solange
+        Internet wird NUR für die optionale KI-Erkennung von Terminen benötigt (Einstellungen, standardmäßig aus):
+        Nur wenn der Nutzer sie einschaltet, einen eigenen API-Schlüssel hinterlegt und die Erkennung ausdrücklich
+        auslöst, wird der Text an die Claude-API gesendet. Sonst baut die App keine Verbindung auf.
+    -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+        Die App selbst braucht sonst kein Internet. Das Mikrofon wird nur für das Diktieren benutzt und nur, solange
         das Diktier-Fenster offen ist; ausgewertet wird die Sprache vom Spracherkennungsdienst des Geräts.
     -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />

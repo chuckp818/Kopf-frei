@@ -3,7 +3,8 @@
 *Dein Kopf. Dein Tempo. Dein Alltag.*
 
 Android-App für Menschen mit ADHS/ADS: Gedanken festhalten, Aufgaben und Termine im eigenen Tempo,
-Erinnerungen, die nicht „wegwischbar“ sind – alles lokal auf dem Gerät, ohne Konto, ohne Internet.
+Erinnerungen, die nicht „wegwischbar“ sind – alles lokal auf dem Gerät, ohne Konto. Internet nutzt die App
+nur, wenn du die **optionale KI-Erkennung** selbst einschaltest (standardmäßig aus).
 
 Technik: Kotlin · Jetpack Compose · Material 3 · Room · Hilt · DataStore · Glance (Widgets) ·
 mehrere Gradle-Module · Offline-first.
@@ -21,7 +22,7 @@ GitHub Actions. Der erste Lauf scheiterte an 3 Compilerfehlern (Broadcast-Receiv
 
 | Was | Ergebnis |
 |---|---|
-| Kompilierung der Android-Module (`app`, `core:database/designsystem/security/reminders`, alle `feature:*`) | **in GitHub Actions erfolgreich** (nach Behebung von 3 Fehlern) |
+| Kompilierung der Android-Module (`app`, `core:database/designsystem/security/reminders/ai`, alle `feature:*`) | **in GitHub Actions erfolgreich** (nach Behebung von 3 Fehlern) |
 | APK-Build (Debug) | **in GitHub Actions erfolgreich** (Artifact `KopfFrei-debug-apk`, ca. 20 MB) |
 | Gradle-Unit-Tests (`:core:common:test`, `testDebugUnitTest` aller Module) | **in GitHub Actions erfolgreich** (Berichte als Artifact `unit-test-reports`) |
 | Reine Kotlin-Logik (`core:common`, ohne Android) | mit `kotlinc` 2.2.20 kompiliert; **89 Tests** über einen selbstgebauten Mini-JUnit-Ersatz ausgeführt: 89 bestanden, 0 fehlgeschlagen |
@@ -65,6 +66,7 @@ Legende: ✅ umgesetzt (ungetestet auf Gerät) · ⚠️ teilweise · ❌ **nich
 | „Ich bin überfordert“ (SOS) | ⚠️ | **Nur Basis:** beruhigender Text, Kopf ausschütten, 5-Minuten-Start, eine Aufgabe wählen, Stimmung festhalten. Geführte Übungen = Phase 2 |
 | Diktieren in der App (Mikrofon-Berechtigung, Live-Text, Neustart nach Pausen, Systemdialog als Rückfall) | ⚠️ | Baut, aber **auf keinem Gerät getestet**. Die Erkennung selbst macht der Spracherkennungsdienst des Geräts (meist Google); ob offline oder online, hängt vom Sprachpaket ab |
 | Termine aus Text/Sprache erkennen, Liste zur Bestätigung, Eintrag in den Kalender (+ Erinnerung 30 Min. vorher) | ⚠️ | Erkennung ist **regelbasiert und lokal (keine KI)**; 26 Logik-Tests + 5 Abbildungs-Tests bestanden, Oberfläche ungetestet. Erkennt gängige deutsche Formulierungen („morgen um 10 Uhr Zahnarzt“, „am Montag um halb vier“), nicht beliebige Sprache. Nichts wird ohne Bestätigung eingetragen |
+| KI-Termin-Erkennung (optional, Schalter in Einstellungen → „KI-Erkennung (optional)“) | ⚠️ | Standardmäßig **aus**. Braucht Internet und deinen **eigenen Claude-API-Schlüssel** (console.anthropic.com, Nutzung kostet je nach Anbieter-Preisliste Geld). Text wird **nur nach Tippen auf „Termine mit KI erkennen“** und nach einmaliger Einwilligung an die Anthropic-API gesendet; bei Fehler/ohne Netz greift automatisch die lokale Erkennung. Schlüssel liegt AES-verschlüsselt (Android Keystore) im Gerätespeicher, nicht im Backup. Nur die Antwort-Auswertung hat Unit-Tests; ❌ **der echte API-Aufruf wurde nie ausgeführt** (kein Schlüssel/kein Zugriff in der Entwicklungsumgebung), die Modellbezeichnung `claude-haiku-5-5` ist **nicht live geprüft** |
 | Kopf ausschütten | ✅ | Freitext/Sprache, laufend als Entwurf gesichert; in Gedanken, Aufgaben oder eine Notiz umwandeln |
 | Einstellungen | ✅ | Darstellung, Startseite, Erinnerungen/Berechtigungen, App-Sperre, Export, „Alle Daten löschen“ |
 | Lokale Datenbank (Room, UUIDs, Zeitstempel, Schema-Export, Migrationsrahmen) | ✅ | Version 1; ❌ noch keine Migration nötig und daher kein Migrationstest |
@@ -86,6 +88,7 @@ KopfFrei/
 │   ├── database/             Room-Datenbank, DAOs, Repositories, DataStore-Einstellungen, Export/Löschen
 │   ├── designsystem/         Theme, Farben, wiederverwendbare Compose-Bausteine
 │   ├── reminders/            Alarme, Benachrichtigungen, Boot-/Zeit-Empfänger, ReminderCoordinator
+│   ├── ai/                   Optionale KI-Termin-Erkennung (Claude-API, Schlüsselspeicher, Antwort-Parser)
 │   └── security/             BiometricAuth (App-Sperre über das Betriebssystem)
 ├── feature/
 │   ├── dashboard/  notes/  journal/  tasks/  calendar/  focus/  settings/  widgets/
@@ -175,7 +178,7 @@ einen eigenen Schlüssel (`signingConfigs`); den bewusst nicht ins Repository le
 
 ## 7. Datenschutz und Sicherheit
 
-* **Kein `INTERNET`-Recht** in den eigenen Manifesten; keine Konten, kein Tracking, keine Cloud.
+* **`INTERNET`-Recht nur für die optionale KI-Erkennung** (Modul `core/ai`). Ohne eingeschalteten Schalter und ohne Tippen auf „Termine mit KI erkennen“ wird nichts gesendet. Gesendet wird dann der eingegebene Text (max. 4000 Zeichen) an `api.anthropic.com`; dort gelten die Datenschutzbedingungen von Anthropic. Keine Konten, kein Tracking, keine eigene Cloud.
   (Bibliotheken können eigene Berechtigungen mitbringen, z. B. die Biometrie-Bibliothek – siehe „Merged Manifest“.)
 * **Backup:** `allowBackup` ist an, aber die Cloud-Sicherung ist ausgeschlossen. Nur die vom Nutzer
   gestartete direkte Geräteübertragung (Kabel/Nähe, Android 12+) nimmt Datenbank, Dateien und Einstellungen mit.
