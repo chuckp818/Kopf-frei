@@ -3,6 +3,7 @@ package de.kopffrei.feature.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import de.kopffrei.core.common.calendar.DetectedAppointment
 import de.kopffrei.core.common.model.Mood
 import de.kopffrei.core.common.model.OwnerType
 import de.kopffrei.core.common.settings.UserSettings
@@ -18,6 +19,7 @@ import de.kopffrei.core.database.repository.MoodRepository
 import de.kopffrei.core.database.repository.NoteRepository
 import de.kopffrei.core.database.repository.TaskRepository
 import de.kopffrei.core.reminders.ActiveReminder
+import de.kopffrei.core.reminders.AppointmentImporter
 import de.kopffrei.core.reminders.ReminderCoordinator
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
@@ -46,6 +48,7 @@ class DashboardViewModel @Inject constructor(
     private val noteRepository: NoteRepository,
     private val moodRepository: MoodRepository,
     private val reminders: ReminderCoordinator,
+    private val appointmentImporter: AppointmentImporter,
 ) : ViewModel() {
 
     /** Aktualisiert „nächster Termin“ und „überfällig“ im Minutentakt. */
@@ -103,6 +106,20 @@ class DashboardViewModel @Inject constructor(
     fun saveThought(text: String) {
         if (text.isBlank()) return
         viewModelScope.launch { noteRepository.addThought(text) }
+    }
+
+    /** Trägt vom Nutzer bestätigte, erkannte Termine in den Kalender ein; [onDone] meldet Anzahl oder Fehler. */
+    fun importAppointments(items: List<DetectedAppointment>, onDone: (Result<Int>) -> Unit) {
+        viewModelScope.launch {
+            val result = try {
+                Result.success(appointmentImporter.import(items))
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+            onDone(result)
+        }
     }
 
     fun completeTask(taskId: String) {

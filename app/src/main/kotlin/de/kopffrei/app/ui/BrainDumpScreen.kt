@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.Inbox
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.StickyNote2
@@ -20,7 +21,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -30,12 +34,16 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import de.kopffrei.core.common.calendar.AppointmentDetector
+import de.kopffrei.core.common.calendar.DetectedAppointment
 import de.kopffrei.core.common.text.BrainDump
 import de.kopffrei.core.database.entity.NoteEntity
 import de.kopffrei.core.database.entity.TaskEntity
 import de.kopffrei.core.database.repository.DraftRepository
 import de.kopffrei.core.database.repository.NoteRepository
 import de.kopffrei.core.database.repository.TaskRepository
+import de.kopffrei.core.reminders.AppointmentImporter
+import de.kopffrei.core.designsystem.components.AppointmentReviewDialog
 import de.kopffrei.core.designsystem.components.KfButton
 import de.kopffrei.core.designsystem.components.KfButtonStyle
 import de.kopffrei.core.designsystem.components.KfScreen
@@ -54,6 +62,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import java.time.LocalDateTime
 import javax.inject.Inject
 
 data class BrainDumpState(
@@ -73,6 +83,7 @@ class BrainDumpViewModel @Inject constructor(
     private val drafts: DraftRepository,
     private val notes: NoteRepository,
     private val tasks: TaskRepository,
+    private val appointmentImporter: AppointmentImporter,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(BrainDumpState())
@@ -123,6 +134,22 @@ class BrainDumpViewModel @Inject constructor(
 
     fun consumeMessage() {
         _state.update { it.copy(message = null) }
+    }
+
+    /** Trägt bestätigte, erkannte Termine in den Kalender ein. Der Text bleibt unverändert erhalten. */
+    fun importAppointments(items: List<DetectedAppointment>) {
+        if (items.isEmpty()) return
+        viewModelScope.launch {
+            val message = try {
+                val n = appointmentImporter.import(items)
+                if (n == 1) "1 Termin im Kalender eingetragen." else "$n Termine im Kalender eingetragen."
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                "Das Eintragen hat nicht geklappt. Dein Text ist noch da."
+            }
+            _state.update { it.copy(message = message) }
+        }
     }
 
     fun parkAsThoughts() = convert("Gedanke geparkt", "Gedanken geparkt") { line -> notes.addThought(line) }
@@ -223,6 +250,16 @@ fun BrainDumpScreen(
     val snackbar = remember { SnackbarHostState() }
     val startVoice = rememberVoiceInput { viewModel.appendText(it) }
     val lineCount = BrainDump.splitLines(state.text).size
+    var reviewOpen by remember { mutableStateOf(false) }
+    // Die Erkennung läuft lokal; kurz warten und im Hintergrund rechnen, damit das Tippen flüssig bleibt.
+    val detected by produceState(initialValue = emptyList<DetectedAppointment>(), state.text) {
+        if (state.text.isBlank()) {
+            value = emptyList()
+        } else {
+            delay(400)
+            value = withContext(Dispatchers.Default) { AppointmentDetector.detect(state.text, LocalDateTime.now()) }
+        }
+    }
 
     BackHandler {
         viewModel.flushNow()
@@ -275,6 +312,16 @@ fun BrainDumpScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
+            if (detected.isNotEmpty()) {
+                KfButton(
+                    if (detected.size == 1) "1 Termin erkannt – eintragen?" else "${detected.size} Termine erkannt – eintragen?",
+                    onClick = { reviewOpen = true },
+                    icon = Icons.Rounded.CalendarToday,
+                    style = KfButtonStyle.Tonal,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
             val enabled = lineCount > 0 && !state.busy
             Text(
                 if (lineCount == 0) "Noch nichts da." else if (lineCount == 1) "1 Zeile erkannt." else "$lineCount Zeilen erkannt.",
@@ -310,5 +357,16 @@ fun BrainDumpScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+
+    if (reviewOpen) {
+        AppointmentReviewDialog(
+            items = detected,
+            onConfirm = { chosen ->
+                reviewOpen = false
+                viewModel.importAppointments(chosen)
+            },
+            onDismiss = { reviewOpen = false },
+        )
     }
 }

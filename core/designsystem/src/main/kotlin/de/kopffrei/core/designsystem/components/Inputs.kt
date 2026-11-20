@@ -250,52 +250,6 @@ fun TimePickerField(
     }
 }
 
-// ------------------------------------------------------------------ Spracheingabe
-
-/**
- * Startet die Android-Spracherkennung (Systemdialog, keine eigene Mikrofon-Berechtigung nötig) und
- * liefert den erkannten Text. Gibt die Funktion zum Starten zurück.
- */
-@Composable
-fun rememberVoiceInput(onResult: (String) -> Unit): () -> Unit {
-    val context = LocalContext.current
-    val currentOnResult by rememberUpdatedState(onResult)
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val text = result.data
-                ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
-                ?.firstOrNull()
-            if (!text.isNullOrBlank()) currentOnResult(text)
-        }
-    }
-    return remember(launcher, context) {
-        {
-            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag())
-                putExtra(RecognizerIntent.EXTRA_PROMPT, "Sprich einfach los …")
-            }
-            try {
-                launcher.launch(intent)
-            } catch (_: ActivityNotFoundException) {
-                Toast.makeText(
-                    context,
-                    "Auf diesem Gerät ist keine Spracherkennung verfügbar.",
-                    Toast.LENGTH_LONG,
-                ).show()
-            }
-        }
-    }
-}
-
-@Composable
-fun VoiceInputButton(onResult: (String) -> Unit, modifier: Modifier = Modifier) {
-    val start = rememberVoiceInput(onResult)
-    IconButton(onClick = start, modifier = modifier) {
-        Icon(Icons.Rounded.Mic, contentDescription = "Einsprechen")
-    }
-}
-
 // ------------------------------------------------------------------ Anhänge
 
 class AttachmentPickers(val pickImage: () -> Unit, val pickFile: () -> Unit)

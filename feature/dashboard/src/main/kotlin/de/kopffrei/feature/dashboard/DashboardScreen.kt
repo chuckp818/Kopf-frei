@@ -1,5 +1,11 @@
 package de.kopffrei.feature.dashboard
 
+import android.widget.Toast
+import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.ui.platform.LocalContext
+import de.kopffrei.core.common.calendar.AppointmentDetector
+import de.kopffrei.core.common.calendar.DetectedAppointment
+import java.time.LocalDateTime
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -47,6 +53,7 @@ import de.kopffrei.core.common.text.DateText
 import de.kopffrei.core.common.text.Greeting
 import de.kopffrei.core.common.time.TimeUtils
 import de.kopffrei.core.database.repository.EventOccurrence
+import de.kopffrei.core.designsystem.components.AppointmentReviewDialog
 import de.kopffrei.core.designsystem.components.KfButton
 import de.kopffrei.core.designsystem.components.KfButtonStyle
 import de.kopffrei.core.designsystem.components.KfCard
@@ -127,7 +134,7 @@ fun DashboardScreen(
                             compact, state.reminders, onOpenDeepLink,
                             viewModel::acknowledge, viewModel::snooze, viewModel::completeFromReminder,
                         )
-                        DashboardCard.QUICK_THOUGHT -> QuickThoughtCard(compact, viewModel::saveThought)
+                        DashboardCard.QUICK_THOUGHT -> QuickThoughtCard(compact, viewModel::saveThought, viewModel::importAppointments)
                         DashboardCard.FOCUS -> FocusCard(compact, onStartFocus)
                         DashboardCard.SHORTCUTS -> ShortcutsCard(compact, settings.pinnedShortcuts, onOpenMore)
                     }
@@ -351,9 +358,19 @@ private fun RemindersCard(
 }
 
 @Composable
-private fun QuickThoughtCard(compact: Boolean, onSave: (String) -> Unit) {
+private fun QuickThoughtCard(
+    compact: Boolean,
+    onSave: (String) -> Unit,
+    onImportAppointments: (List<DetectedAppointment>, (Result<Int>) -> Unit) -> Unit,
+) {
+    val context = LocalContext.current
     var text by rememberSaveable { mutableStateOf("") }
+    var reviewOpen by remember { mutableStateOf(false) }
     val startVoice = rememberVoiceInput { spoken -> text = (text + " " + spoken).trim() }
+    // Erkennung läuft lokal und ist billig; sie aktualisiert sich bei jeder Textänderung.
+    val detected = remember(text) {
+        if (text.isBlank()) emptyList() else AppointmentDetector.detect(text, LocalDateTime.now())
+    }
     KfCard(contentPadding = cardPadding(compact)) {
         SectionTitle("Gedanke festhalten")
         KfTextField(
@@ -365,6 +382,14 @@ private fun QuickThoughtCard(compact: Boolean, onSave: (String) -> Unit) {
                 IconButton(onClick = startVoice) { Icon(Icons.Rounded.Mic, contentDescription = "Einsprechen") }
             },
         )
+        if (detected.isNotEmpty()) {
+            KfButton(
+                if (detected.size == 1) "1 Termin erkannt – eintragen?" else "${detected.size} Termine erkannt – eintragen?",
+                onClick = { reviewOpen = true },
+                icon = Icons.Rounded.CalendarToday,
+                style = KfButtonStyle.Tonal,
+            )
+        }
         KfButton(
             "Im Gedanken-Parkplatz ablegen",
             onClick = {
@@ -373,6 +398,22 @@ private fun QuickThoughtCard(compact: Boolean, onSave: (String) -> Unit) {
             },
             enabled = text.isNotBlank(),
             icon = Icons.Rounded.Check,
+        )
+    }
+    if (reviewOpen) {
+        AppointmentReviewDialog(
+            items = detected,
+            onConfirm = { chosen ->
+                reviewOpen = false
+                onImportAppointments(chosen) { result ->
+                    val message = result.fold(
+                        onSuccess = { n -> if (n == 1) "1 Termin im Kalender eingetragen." else "$n Termine im Kalender eingetragen." },
+                        onFailure = { "Das Eintragen hat nicht geklappt. Dein Text ist noch da." },
+                    )
+                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                }
+            },
+            onDismiss = { reviewOpen = false },
         )
     }
 }

@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Die App braucht kein Internet. Mikrofon und Kamera werden nicht direkt benutzt (Spracheingabe läuft über das System). -->
+    <!--
+        Die App selbst braucht kein Internet. Das Mikrofon wird nur für das Diktieren benutzt und nur, solange
+        das Diktier-Fenster offen ist; ausgewertet wird die Sprache vom Spracherkennungsdienst des Geräts.
+    -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <queries>
         <intent>
             <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
         </intent>
     </queries>
 
